@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Process Updates &amp; Reminders — Searchable Outline</title>
+<style>
+  :root {
+    --navy-950: #050e24; --navy-900: #081733; --navy-800: #0d2044; --navy-700: #12295a;
+    --blue-500: #1e6fd9; --blue-400: #3b8cf0; --blue-300: #6fb1ff; --cyan: #00c2ff;
+    --text-main: #e7edf7; --text-muted: #9fb0cc; --border: #1c3466;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+    background: radial-gradient(1200px 600px at 10% -10%, var(--navy-800), var(--navy-950) 60%);
+    color: var(--text-main); min-height:100vh; }
+  header { position:sticky; top:0; z-index:10; background: linear-gradient(90deg, var(--navy-950), var(--navy-900) 60%, var(--navy-800));
+    border-bottom:1px solid var(--border); padding:22px 28px 18px; box-shadow:0 8px 24px rgba(0,0,0,0.35); }
+  .top-row { display:flex; align-items:center; gap:14px; flex-wrap:wrap; justify-content:space-between; }
+  .brand { display:flex; align-items:center; gap:12px; }
+  .brand .logo { width:42px; height:42px; border-radius:10px; background:linear-gradient(135deg, var(--blue-500), var(--cyan));
+    display:flex; align-items:center; justify-content:center; font-size:22px; box-shadow:0 0 18px rgba(59,140,240,0.55); }
+  h1 { font-size:20px; margin:0; } .subtitle { color:var(--text-muted); font-size:13px; margin-top:2px; }
+  .controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  #search { width:340px; max-width:60vw; padding:11px 16px; border-radius:10px; border:1px solid var(--border);
+    background:var(--navy-800); color:var(--text-main); font-size:14px; outline:none; }
+  #search:focus { border-color:var(--blue-400); box-shadow:0 0 0 3px rgba(59,140,240,0.25); }
+  button.btn { padding:10px 16px; border-radius:10px; border:1px solid var(--border); background:var(--navy-800);
+    color:var(--text-main); font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px; }
+  button.btn:hover { background:var(--navy-700); border-color:var(--blue-400); }
+  button.btn.primary { background:linear-gradient(135deg, var(--blue-500), var(--cyan)); border:none; color:#051225; font-weight:600; }
+  #editBanner { display:none; background:linear-gradient(90deg,#143a1f,#0d2044); border:1px solid #2e8b57; color:#b9f6c8;
+    padding:8px 16px; font-size:13px; text-align:center; }
+  main { max-width:1000px; margin:0 auto; padding:24px 20px 80px; }
+  .meta-line { color:var(--text-muted); font-size:13px; margin:4px 0 20px; }
+  .panel { background:var(--navy-900); border:1px solid var(--border); border-radius:14px; margin-bottom:16px; overflow:hidden; }
+  .panel-header { display:flex; align-items:center; gap:12px; padding:16px 18px; cursor:pointer; user-select:none;
+    background:linear-gradient(90deg, var(--navy-800), var(--navy-900)); }
+  .panel-header:hover { background:linear-gradient(90deg, var(--navy-700), var(--navy-800)); }
+  .panel-icon { font-size:20px; } .panel-header h2 { font-size:16px; margin:0; flex:1; }
+  .count { background:rgba(59,140,240,0.18); color:var(--blue-300); border-radius:999px; padding:2px 10px; font-size:12px; font-weight:600; }
+  .chev { color:var(--text-muted); transition:transform 0.2s; } .panel.collapsed .chev { transform:rotate(-90deg); }
+  .panel-body { padding:6px 18px 14px; } .panel.collapsed .panel-body { display:none; }
+  .item { border-bottom:1px solid rgba(28,52,102,0.6); padding:12px 4px; } .item:last-child { border-bottom:none; }
+  .item.hidden { display:none; }
+  .entry-meta { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
+  .tag { background:rgba(111,177,255,0.14); color:var(--blue-300); padding:2px 9px; border-radius:6px; font-size:12px; font-weight:600; }
+  .tag.jira { background:rgba(0,194,255,0.14); color:var(--cyan); }
+  .tag.ref { background:rgba(158,255,178,0.12); color:#8be6a0; }
+  .tag.signoff { background:rgba(255,196,0,0.14); color:#ffd166; }
+  .date { color:var(--text-muted); font-size:12px; padding:2px 4px; }
+  .entry-text { font-size:14px; line-height:1.55; white-space:pre-wrap; color:var(--text-main); }
+  .entry-text a { color:var(--blue-300); word-break:break-all; }
+  .no-results { text-align:center; color:var(--text-muted); padding:40px 0; display:none; }
+  [contenteditable="true"] { outline:1px dashed var(--blue-400); background:rgba(59,140,240,0.06); border-radius:6px; }
+  .loading { text-align:center; color:var(--text-muted); padding:60px 0; }
+  footer { text-align:center; color:var(--text-muted); font-size:12px; padding:20px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="top-row">
+    <div class="brand">
+      <div class="logo">💳</div>
+      <div><h1>Process Updates &amp; Reminders</h1><div class="subtitle">Searchable outline · Software Spanish Masterfile 2026</div></div>
+    </div>
+    <div class="controls">
+      <input id="search" type="text" placeholder="🔍 Search JIRA #, keyword, PLU, POS version...">
+      <button class="btn" id="expandAll">⬍ Expand all</button>
+      <button class="btn" id="editToggle">✏️ Edit mode</button>
+      <button class="btn primary" id="downloadBtn">⬇ Download edited copy</button>
+    </div>
+  </div>
+</header>
+<div id="editBanner">Edit mode is on — click into any entry text to change it, then use "Download edited copy" to save your changes as a new file.</div>
+<main id="main"><div class="loading">Loading outline…</div></main>
+<footer>Generated outline — edits made here stay in this browser tab only until you download the updated copy.</footer>
+<script>
+function esc(s){return (s??'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function linkify(t){const u=/(https?:\/\/[^\s]+)/g;return esc(t).replace(u,m=>`<a href="${m}" target="_blank" rel="noopener">${m}</a>`);}
+function mk(search,html){return {search:(search||'').toLowerCase(), html};}
+
+fetch('./data.json').then(r=>r.json()).then(raw=>{
+  const sections = [];
+  {
+    const items = raw.procUpdates2024.map(e=>{
+      const parts=[]; if(e.label) parts.push(`<span class="tag">${esc(e.label)}</span>`); if(e.date) parts.push(`<span class="date">${esc(e.date)}</span>`);
+      const body = e.text ? `<div class="entry-text">${linkify(e.text)}</div>` : '';
+      return mk([e.label,e.date,e.text].filter(Boolean).join(' '), `<div class="entry">${parts.length?`<div class="entry-meta">${parts.join(' ')}</div>`:''}${body}</div>`);
+    });
+    sections.push({id:'proc2024',icon:'🖥️',title:'Process Updates 2024',items});
+  }
+  {
+    const items = raw.reminders.map(t=>mk(t,`<div class="entry"><div class="entry-text">${linkify(t)}</div></div>`));
+    sections.push({id:'reminders',icon:'🔔',title:'Reminders',items});
+  }
+  {
+    const items = raw.jira.map(e=>{
+      const parts=[]; if(e.number) parts.push(`<span class="tag jira">${esc(e.number)}</span>`); if(e.date) parts.push(`<span class="date">${esc(e.date)}</span>`);
+      const body = e.description ? `<div class="entry-text">${linkify(e.description)}</div>` : '';
+      return mk([e.number,e.date,e.description].filter(Boolean).join(' '), `<div class="entry">${parts.length?`<div class="entry-meta">${parts.join(' ')}</div>`:''}${body}</div>`);
+    });
+    sections.push({id:'jira',icon:'🎫',title:'JIRA Tracker',items});
+  }
+  {
+    const items = raw.references.map(e=>{
+      const name = e.name || '(untitled reference)';
+      const link = e.link ? `<a href="${esc(e.link)}" target="_blank" rel="noopener">${esc(e.link)}</a>` : '';
+      return mk([e.name,e.link].filter(Boolean).join(' '), `<div class="entry"><div class="entry-meta"><span class="tag ref">${esc(name)}</span></div>${link?`<div class="entry-text">${link}</div>`:''}</div>`);
+    });
+    sections.push({id:'references',icon:'🔗',title:'References',items});
+  }
+  {
+    const items = raw.proc2025.map(e=>{
+      const parts=[]; if(e.date) parts.push(`<span class="date">${esc(e.date)}</span>`);
+      const body = e.description ? `<div class="entry-text">${linkify(e.description)}</div>` : '';
+      return mk([e.date,e.description].filter(Boolean).join(' '), `<div class="entry">${parts.length?`<div class="entry-meta">${parts.join(' ')}</div>`:''}${body}</div>`);
+    });
+    sections.push({id:'proc2025',icon:'📋',title:'Process Updates / Reminders 2025',items});
+  }
+  {
+    const items = raw.signoff.map(e=>{
+      const name = e.name || '(untitled)';
+      const link = e.link ? `<a href="${esc(e.link)}" target="_blank" rel="noopener">${esc(e.link)}</a>` : '';
+      return mk([e.name,e.link].filter(Boolean).join(' '), `<div class="entry"><div class="entry-meta"><span class="tag signoff">${esc(name)}</span></div>${link?`<div class="entry-text">${link}</div>`:''}</div>`);
+    });
+    sections.push({id:'signoff',icon:'✅',title:'Sign-Off',items});
+  }
+
+  const totalCount = sections.reduce((s,sec)=>s+sec.items.length,0);
+  const main = document.getElementById('main');
+  main.innerHTML = `<p class="meta-line">${totalCount} total entries across ${sections.length} sections. Type in the search box to filter instantly by keyword, JIRA number, PLU, POS version, or store name.</p>` +
+    sections.map(sec=>`
+    <section class="panel" id="sec-${sec.id}">
+      <div class="panel-header" data-toggle="sec-${sec.id}">
+        <span class="panel-icon">${sec.icon}</span><h2>${esc(sec.title)}</h2>
+        <span class="count">${sec.items.length}</span><span class="chev">▾</span>
+      </div>
+      <div class="panel-body">
+        ${sec.items.map(it=>`<div class="item" data-search="${esc(it.search)}">${it.html}</div>`).join('')}
+      </div>
+    </section>`).join('') + '<div class="no-results" id="noResults">No entries match your search.</div>';
+
+  const searchInput = document.getElementById('search');
+  const items = Array.from(document.querySelectorAll('.item'));
+  const panels = Array.from(document.querySelectorAll('.panel'));
+  const noResults = document.getElementById('noResults');
+
+  function applySearch(){
+    const term = searchInput.value.trim().toLowerCase();
+    let anyVisible = false; const counts = {};
+    items.forEach(it=>{
+      const hay = it.getAttribute('data-search')||''; const match = !term || hay.includes(term);
+      it.classList.toggle('hidden', !match);
+      if(match){ anyVisible=true; const sec=it.closest('.panel'); counts[sec.id]=(counts[sec.id]||0)+1; }
+    });
+    panels.forEach(p=>{ const c=counts[p.id]||0; p.style.display=(term && c===0)?'none':''; if(term && c>0) p.classList.remove('collapsed'); });
+    noResults.style.display = (term && !anyVisible) ? 'block' : 'none';
+  }
+  searchInput.addEventListener('input', applySearch);
+  document.querySelectorAll('[data-toggle]').forEach(h=>h.addEventListener('click',()=>h.closest('.panel').classList.toggle('collapsed')));
+
+  let expanded = true;
+  document.getElementById('expandAll').addEventListener('click', ()=>{
+    expanded = !expanded; panels.forEach(p=>p.classList.toggle('collapsed', !expanded));
+    document.getElementById('expandAll').textContent = expanded ? '⬍ Collapse all' : '⬍ Expand all';
+  });
+
+  let editMode = false;
+  document.getElementById('editToggle').addEventListener('click', ()=>{
+    editMode = !editMode;
+    document.querySelectorAll('.entry-text, h2').forEach(el=>el.setAttribute('contenteditable', editMode?'true':'false'));
+    document.getElementById('editBanner').style.display = editMode?'block':'none';
+    document.getElementById('editToggle').textContent = editMode ? '✅ Done editing' : '✏️ Edit mode';
+  });
+
+  document.getElementById('downloadBtn').addEventListener('click', ()=>{
+    const doc = document.documentElement.cloneNode(true);
+    doc.querySelectorAll('.item.hidden').forEach(el=>el.classList.remove('hidden'));
+    doc.querySelectorAll('.panel').forEach(el=>{ el.classList.remove('collapsed'); el.style.display=''; });
+    doc.querySelectorAll('[contenteditable]').forEach(el=>el.removeAttribute('contenteditable'));
+    const html = '<!DOCTYPE html>\n' + doc.outerHTML;
+    const blob = new Blob([html], {type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'process-updates-outline-' + new Date().toISOString().slice(0,10) + '.html';
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  });
+}).catch(err=>{ document.getElementById('main').innerHTML = '<div class="loading">Could not load data.json — ' + esc(err.message) + '</div>'; });
+</script>
+</body>
+</html>
